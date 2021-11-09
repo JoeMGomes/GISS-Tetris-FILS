@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 import pygame
 import random
 from Pieces import *
@@ -9,14 +9,19 @@ STEP_TIMER = 200
 class Board():
 
     def __init__(self) -> None:
-        self.grid = [[(0,0,0) for x in range(10)] for x in range(20)]
-        self.lockedPieces = dict()
+        self.nextStepTimer = STEP_TIMER #miliseconds
+
+        self.lockedPieces = dict() #Pieces that are already locked on the board { (x,y) : color }
+
         self.currentPiecePosition = (5,3) #Position Rotation
         self.currentPieceRotation = 0
-        self.currentPiece = PieceType.HERO # random.choice(list(PieceType))
+        self.currentPiece =  random.choice(list(PieceType))
         self.nextPiece = random.choice(list(PieceType))
+        #List of cells that the current piece occupies
         self.pieceCells = occupied_positions(self.currentPiece,self.currentPiecePosition, self.currentPieceRotation)
-        self.nextStepTimer = STEP_TIMER #miliseconds
+
+        self.gameState = "PLAYING" #Used strings because of simplicity
+        self.score = 0
 
     def newPiece(self):
         self.currentPiece = self.nextPiece
@@ -25,13 +30,20 @@ class Board():
         self.nextPiece = random.choice(list(PieceType))
         self.pieceCells = occupied_positions(self.currentPiece,self.currentPiecePosition, self.currentPieceRotation)
 
+        # for idx, cell in self.pieceCells:
+        #     if cell in self.lockedPieces:
+        #         print("lost")
+        #         self.gameState == "LOST"
+
 
     def rotate(self):
         self.currentPieceRotation = (self.currentPieceRotation + 1) % len(PieceDictionary[self.currentPiece])
         self.pieceCells = occupied_positions(self.currentPiece,self.currentPiecePosition, self.currentPieceRotation)
 
+    def moveDown(self):
+        self.nextStepTimer = 0 #Moving down is the same as doing a new step down
 
-    def move(self ,isLeft):
+    def move(self ,isLeft: bool):
         x,y = self.currentPiecePosition
         new_x = 0
         if isLeft:
@@ -46,7 +58,7 @@ class Board():
             self.pieceCells = occupied_positions(self.currentPiece,self.currentPiecePosition, self.currentPieceRotation)
 
     
-    def WillCollide(self,position)-> bool:
+    def WillCollide(self,position:  Tuple[int, int])-> bool:
         newCells = occupied_positions(self.currentPiece, position, self.currentPieceRotation)
 
         for idx, val in enumerate(newCells):
@@ -65,16 +77,45 @@ class Board():
         for idx, val in enumerate(positions):
             self.lockedPieces[(val[0], val[1])] = PieceColors[self.currentPiece.value]
 
-    # def checkScore(self):
+    def checkCompleteRows(self)-> List[int]:
 
-    #     for i in range(20):
-    #         for j in range(10):
-    #             if (j,i) not in self.lockedPieces:
-    #                 return False
+        complete_rows = []
 
+        for i in range(20):
+            counter = 0
+            for j in range(10):
+                if (j,i) in self.lockedPieces:
+                    counter += 1
 
-    def increaseScore(self):
-        print("SCORE")
+            if counter == 10:
+                complete_rows.append(i)
+        return complete_rows
+
+    def removeRow(self, row: int):
+        for j in range(10):
+            self.lockedPieces.pop((j,row))
+        
+    def pullDown(self, row: int):
+        #in reverse to avoid putting two pieces in the same place momentarily
+        for i in reversed(range(row)):
+            for j in range(10):
+                #Do nothing if the piece to pull down is black
+                if (j,i) not in self.lockedPieces:
+                    continue         
+                else: #remove the current locked piece and replace it one  cell bellow
+                    color = self.lockedPieces[(j,i)]
+                    self.lockedPieces.pop((j,i))
+                    self.lockedPieces[(j,i+1)] = color
+
+    def checkScore(self):
+        complete_rows = self.checkCompleteRows()
+
+        #For all full rows: delete the row and pull down all rows above
+        for idx, row in enumerate(complete_rows):
+            self.removeRow(row)
+            self.pullDown(row)
+            self.score += 1
+
 
     def step(self, deltaTime):
         x,y = self.currentPiecePosition
@@ -83,8 +124,7 @@ class Board():
             self.lockPiece(self.pieceCells)
             self.newPiece()
 
-        # if self.checkScore():
-        #     self.increaseScore()
+        self.checkScore()
 
         if self.nextStepTimer <= 0:
             y += 1
@@ -95,7 +135,7 @@ class Board():
             self.nextStepTimer -= deltaTime
 
 
-    def draw(self,win):
+    def draw(self, win: pygame.Surface):
         #Fill screen with black
         win.fill((0,0,0))
 

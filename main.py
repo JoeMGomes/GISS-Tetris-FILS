@@ -33,13 +33,17 @@ while run:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 board.rotate()
-            if event.key == pygame.K_a:
+            if event.key == pygame.K_a or event.key == pygame.K_LEFT :
                 board.move(isLeft=True)
-            if event.key == pygame.K_d:
+            if event.key == pygame.K_d or event.key == pygame.K_RIGHT :
                 board.move(isLeft=False)
+            if event.key == pygame.K_s or event.key == pygame.K_DOWN :
+                board.moveDown()
             if event.key == pygame.K_r:
                 board.newPiece()
 
+    if(board.gameState == "LOST"):
+        break
 
     board.step(deltaTime)
     board.draw(win)
