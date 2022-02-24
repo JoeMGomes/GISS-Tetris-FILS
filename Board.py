@@ -6,13 +6,13 @@ from Pieces import *
 
 STEP_TIMER = 200
 
+
+
 class Board():
 
     def __init__(self) -> None:
         self.nextStepTimer = STEP_TIMER #miliseconds
-
         self.lockedPieces = dict() #Pieces that are already locked on the board { (x,y) : color }
-
         self.currentPiecePosition = (5,3) #Position Rotation
         self.currentPieceRotation = 0
         self.currentPiece =  random.choice(list(PieceType))
@@ -23,6 +23,12 @@ class Board():
         self.gameState = "PLAYING" #Used strings because of simplicity
         self.score = 0
 
+        #Media
+        self.font = pygame.font.SysFont(None,32)
+        self.gameOverSound = pygame.mixer.Sound('media\SFX_GameOver.wav')
+        self.pieceLockSound = pygame.mixer.Sound('media\SFX_PieceLockdown.wav')
+        self.pieceRotateSound = pygame.mixer.Sound('media\SFX_PieceRotateLR.wav')
+
     def newPiece(self):
         self.currentPiece = self.nextPiece
         self.currentPiecePosition = (5,3)
@@ -30,15 +36,15 @@ class Board():
         self.nextPiece = random.choice(list(PieceType))
         self.pieceCells = occupied_positions(self.currentPiece,self.currentPiecePosition, self.currentPieceRotation)
 
-        # for idx, cell in self.pieceCells:
-        #     if cell in self.lockedPieces:
-        #         print("lost")
-        #         self.gameState == "LOST"
+        for idx, cell in enumerate(self.pieceCells):
+            if cell in self.lockedPieces:
+                self.gameState = "LOST"
 
 
     def rotate(self):
         self.currentPieceRotation = (self.currentPieceRotation + 1) % len(PieceDictionary[self.currentPiece])
         self.pieceCells = occupied_positions(self.currentPiece,self.currentPiecePosition, self.currentPieceRotation)
+        self.pieceRotateSound.play()
 
     def moveDown(self):
         self.nextStepTimer = 0 #Moving down is the same as doing a new step down
@@ -56,6 +62,9 @@ class Board():
         else:
             self.currentPiecePosition = (new_x,y)
             self.pieceCells = occupied_positions(self.currentPiece,self.currentPiecePosition, self.currentPieceRotation)
+            self.pieceRotateSound.play()
+
+            
 
     
     def WillCollide(self,position:  Tuple[int, int])-> bool:
@@ -74,6 +83,7 @@ class Board():
 
 
     def lockPiece(self, positions: Tuple[int, int]):
+        self.pieceLockSound.play()
         for idx, val in enumerate(positions):
             self.lockedPieces[(val[0], val[1])] = PieceColors[self.currentPiece.value]
 
@@ -141,10 +151,35 @@ class Board():
 
         #Draw Locked Pieaces
         for idx, val in enumerate(self.lockedPieces):
-            pygame.draw.rect(win, self.lockedPieces[(val[0], val[1])] ,(val[0]*30,val[1]*30,30,30),0)
+            pygame.draw.rect(win, self.lockedPieces[(val[0], val[1])] ,(val[0]*30, 100+val[1]*30,30,30),0)
 
         #Draw Current Piece
         for idx, val in enumerate(self.pieceCells):
-            pygame.draw.rect(win,PieceColors[self.currentPiece.value],(val[0]*30,val[1]*30,30,30),0)
+            pygame.draw.rect(win,PieceColors[self.currentPiece.value],(val[0]*30,100+val[1]*30,30,30),0)
 
-      
+        img = self.font.render("Score: "+ str(self.score), True, (255,255,255))
+        win.blit(img, (10 , 10))
+        img = self.font.render("Next: "+ str(self.nextPiece.name), True, (255,255,255))
+        win.blit(img, (10 , 35))
+
+
+    def drawLoseScreen(self,win : pygame.Surface):
+        self.gameOverSound.play()
+        self.draw(win)
+
+        #Draw alpha background
+        s = pygame.Surface((300,700))  
+        s.set_alpha(200)               
+        s.fill((255,255,255))         
+        win.blit(s, (0,0))    
+
+        #Display text
+        img = self.font.render("YOU LOSE", True, (0,0,0))
+        win.blit(img, (100 , 260))
+        img = self.font.render("Your score: " + str(self.score),True,(0,0,0))
+        win.blit(img, (90 , 300))
+        img = self.font.render("Press R to try again",True,(0,0,0))
+        win.blit(img, (60 , 340))
+
+
+        

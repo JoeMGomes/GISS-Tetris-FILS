@@ -5,13 +5,16 @@ from Pieces import *
 from Board import *
 
 ##Setup game variables
-SCREEN_WIDTH, SCREEN_HEIGHT = 300, 600
+SCREEN_WIDTH, SCREEN_HEIGHT = 300, 700
 run = True
 
 pygame.init() 
 win = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) 
 pygame.display.set_caption("Fake Python Tetris") 
 
+pygame.mixer.music.load('media\Tetris_theme.wav')
+pygame.mixer.music.set_volume(0.1)
+pygame.mixer.music.play(-1)
 
 board = Board()
 lastTime = pygame.time.get_ticks()
@@ -39,14 +42,18 @@ while run:
                 board.move(isLeft=False)
             if event.key == pygame.K_s or event.key == pygame.K_DOWN :
                 board.moveDown()
-            if event.key == pygame.K_r:
-                board.newPiece()
+            if event.key == pygame.K_r and board.gameState == "LOST":
+                board = Board()
+                pygame.mixer.music.play()
 
-    if(board.gameState == "LOST"):
-        break
 
-    board.step(deltaTime)
-    board.draw(win)
+    if board.gameState != "LOST" :
+        board.step(deltaTime)
+        board.draw(win)
+    else:
+        board.drawLoseScreen(win)
+        pygame.mixer.music.stop()
+
     pygame.display.update()
 
 
